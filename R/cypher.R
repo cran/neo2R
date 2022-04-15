@@ -247,7 +247,10 @@ process_graph <- function(d){
    }
    nodes <- unique(do.call(c, lapply(d, function(x) x$graph$nodes)))
    names(nodes) <- unlist(lapply(nodes, function(n) n$id))
-   relationships <- unique(do.call(c, lapply(d, function(x) x$graph$relationships)))
+   relationships <- unique(do.call(c, lapply(
+      d,
+      function(x) x$graph$relationships
+   )))
    names(relationships) <- unlist(lapply(relationships, function(n) n$id))
    p <- lapply(
       d,
