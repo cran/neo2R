@@ -12,11 +12,30 @@
 #' @param importPath path to the import directory
 #' (default: NA => no import directory). Import only works with local neo4j
 #' instance.
-#' @param .opts a named list or CURLOptions object identifying the curl
-#' options for the handle (see [RCurl::curlPerform()]).
-#' (for example: `.opts = list(ssl.verifypeer = FALSE)`)
+#' @param .opts a named list identifying the curl
+#' options for the handle (see [httr::config()] and [httr::httr_options()]
+#' for a complete list of available options;
+#' for example: `.opts = list(ssl_verifypeer = 0)`). Moreover, this parameter
+#' can be used to pass additional headers to the graph requests as
+#' "extendedHeaders": it is useful, for example, for OAuth access
+#' delegation (see details).
 #'
-#' @return a connection to the graph DB:
+#'
+#' @details The "ssl.verifypeer" logical option available in the RCurl package
+#' used in former versions of neo2R (<= 2.2.0) is
+#' not recognized by [httr::config()].
+#' However, for backward compatibility, if it used, it is translated into
+#' "ssl_verifypeer" integer option recognized by the httr package with a
+#' warning message.
+#'
+#' Headers in `.opts$extendedHeaders` are added to, or overwrite,
+#' the default Neo4j headers.
+#' If there is a `.opts$extendedHeaders[["Authorization"]]` value, the
+#' default Neo4j "Authorization" header (user credentials) is provided
+#' automaticaly as "X-Authorization". This mechanism is used for OAuth access
+#' delegation.
+#'
+#' @return A connection to the graph DB:
 #' a list with the url and necessary headers
 #'
 #' @export
@@ -24,6 +43,18 @@
 startGraph <- function(
    url, database=NA, username=NA, password=NA, importPath=NA, .opts=list()
 ){
+
+   if("ssl.verifypeer" %in% names(.opts)){
+      .opts$ssl_verifypeer <- as.integer(.opts$ssl.verifypeer)
+      .opts$ssl.verifypeer <- NULL
+      warning(
+         "'ssl.verifypeer' option has been automatically converted into ",
+         "'ssl_verifypeer' option recognized by `httr::config()`. ",
+         "You should use the 'ssl_verifypeer' integer option ",
+         "to avoid this warning."
+      )
+   }
+
    ## Process URL and guess protocol ----
    protocol <- grep("^https://", url)
    if(length(protocol)==1){
@@ -49,6 +80,30 @@ startGraph <- function(
          ))
       )
    )
+
+   ## Append other headers - swap Authorization headers for OAuth ----
+   extendedHeaders <- .opts$extendedHeaders
+   .opts$extendedHeaders <- NULL
+   if(!is.null(extendedHeaders[["Authorization"]])){
+      temp_auth <- neo4jHeaders[["Authorization"]]
+      neo4jHeaders[["Authorization"]] <- extendedHeaders[["Authorization"]]
+      neo4jHeaders[["X-Authorization"]] <- temp_auth
+      extendedHeaders <- extendedHeaders[setdiff(
+         names(extendedHeaders), "Authorization"
+      )]
+   }
+   overw <- intersect(names(extendedHeaders), names(neo4jHeaders))
+   if(length(overw) > 0){
+      warning(
+         "The following default headers are overwritten by user values: ",
+         paste(overw, sep=", ")
+      )
+      neo4jHeaders <- neo4jHeaders[setdiff(
+         names(neo4jHeaders), names(extendedHeaders)
+      )]
+   }
+   neo4jHeaders <- c(neo4jHeaders, extendedHeaders)
+
    toRet <- list(
       url=url,
       headers=neo4jHeaders,
@@ -84,9 +139,9 @@ startGraph <- function(
          stop("Unknown version of neo4j")
       }
    }
-   if(!toRet$version[1] %in% c("3", "4")){
+   if(!toRet$version[1] %in% c("3", "4", "5")){
       print(toRet["version"])
-      stop("Only version 3 and 4 of Neo4j are supported")
+      stop("Only version 3, 4 and 5 of Neo4j are supported")
    }
    ## Define cypher transaction endpoint ----
    if(toRet$version[1]=="3"){
@@ -96,6 +151,10 @@ startGraph <- function(
       )
    }
    if(toRet$version[1]=="4"){
+      toRet$database <- ifelse(is.na(database), "neo4j", database)
+      toRet$cypher_endpoint <- sprintf("/db/%s/tx/commit", toRet$database)
+   }
+   if(toRet$version[1]=="5"){
       toRet$database <- ifelse(is.na(database), "neo4j", database)
       toRet$cypher_endpoint <- sprintf("/db/%s/tx/commit", toRet$database)
    }
