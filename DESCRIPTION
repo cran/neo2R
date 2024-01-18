@@ -1,12 +1,13 @@
 Package: neo2R
 Type: Package
 Title: Neo4j to R
-Version: 2.4.1
+Version: 2.4.2
 Authors@R: c(
     person(
         "Patrice", "Godard",
         role = c("aut", "cre","cph"),
-        email = "patrice.godard@gmail.com"
+        email = "patrice.godard@gmail.com",
+        comment = c(ORCID = "0000-0001-6257-9730")
     ),
     person(
         "Eusebiu", "Marcu",
@@ -31,8 +32,9 @@ License: GPL-3
 Encoding: UTF-8
 RoxygenNote: 7.2.3
 NeedsCompilation: no
-Packaged: 2023-02-15 12:48:15 UTC; pgodard
-Author: Patrice Godard [aut, cre, cph],
+Packaged: 2024-01-18 10:12:39 UTC; pgodard
+Author: Patrice Godard [aut, cre, cph]
+    (<https://orcid.org/0000-0001-6257-9730>),
   Eusebiu Marcu [ctb]
 Repository: CRAN
-Date/Publication: 2023-02-16 09:50:06 UTC
+Date/Publication: 2024-01-18 10:50:02 UTC
